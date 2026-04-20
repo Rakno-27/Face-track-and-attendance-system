@@ -1,0 +1,2164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="csrf-token" content="{{ session.csrf_token }}">
+  <title>FaceTrack — Attendance System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    /* ═══════════ RESET + VARS ═══════════ */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --bg: #0d0f12;
+      --surface: #13161c;
+      --elevated: #1c2030;
+      --border: rgba(255, 255, 255, 0.07);
+      --border2: rgba(255, 255, 255, 0.12);
+      --accent: #00e676;
+      --accent-bg: rgba(0, 230, 118, 0.1);
+      --red: #ff4757;
+      --red-bg: rgba(255, 71, 87, 0.1);
+      --yellow: #ffa502;
+      --yellow-bg: rgba(255, 165, 2, 0.1);
+      --blue: #5352ed;
+      --blue-bg: rgba(83, 82, 237, 0.1);
+      --text: #eef0f4;
+      --text2: rgba(238, 240, 244, 0.55);
+      --text3: rgba(238, 240, 244, 0.28);
+      --mono: 'Space Mono', monospace;
+      --sans: 'Inter', sans-serif;
+      --r: 10px;
+      --r2: 6px;
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    html {
+      font-size: 15px
+    }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border2);
+      border-radius: 3px
+    }
+
+    /* ═══════════ LAYOUT ═══════════ */
+    .shell {
+      display: flex;
+      min-height: 100vh
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .logo {
+      padding: 1.4rem 1.2rem 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      font-family: var(--mono);
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: -.02em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent)
+    }
+
+    nav {
+      padding: .75rem .6rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px
+    }
+
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      padding: .55rem .75rem;
+      border-radius: var(--r2);
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: var(--text2);
+      font-size: .875rem;
+      font-family: var(--sans);
+      font-weight: 500;
+      transition: .15s;
+      width: 100%;
+      text-align: left;
+    }
+
+    .nav-btn svg {
+      width: 17px;
+      height: 17px;
+      flex-shrink: 0;
+      opacity: .8
+    }
+
+    .nav-btn:hover {
+      background: var(--elevated);
+      color: var(--text)
+    }
+
+    .nav-btn.active {
+      background: var(--accent-bg);
+      color: var(--accent)
+    }
+
+    .nav-btn.active svg {
+      opacity: 1
+    }
+
+    .live-pill {
+      margin-left: auto;
+      background: var(--red);
+      color: #fff;
+      font-size: .6rem;
+      font-family: var(--mono);
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+      animation: blink 1.8s infinite;
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .4
+      }
+    }
+
+    .sidebar-bottom {
+      padding: .75rem 1rem 1rem;
+      border-top: 1px solid var(--border)
+    }
+
+    .admin-tag {
+      font-size: .75rem;
+      color: var(--text3);
+      font-family: var(--mono)
+    }
+
+    /* ── Main ── */
+    main {
+      flex: 1;
+      padding: 1.75rem 2rem;
+      min-width: 0;
+      overflow-x: auto
+    }
+
+    /* ═══════════ PAGES ═══════════ */
+    .page {
+      display: none;
+      animation: fadeUp .2s ease
+    }
+
+    .page.active {
+      display: block
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(8px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    .ph {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      gap: 1rem;
+      flex-wrap: wrap
+    }
+
+    .ph h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -.02em
+    }
+
+    .ph p {
+      font-size: .85rem;
+      color: var(--text2);
+      margin-top: .2rem
+    }
+
+    .ph-actions {
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+      align-items: center
+    }
+
+    /* ═══════════ CARDS ═══════════ */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+      margin-bottom: 1rem
+    }
+
+    .card-hd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .85rem 1.1rem;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .card-hd h3 {
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: .07em
+    }
+
+    /* ═══════════ STAT GRID ═══════════ */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: .85rem;
+      margin-bottom: 1rem
+    }
+
+    @media(max-width:1000px) {
+      .stats {
+        grid-template-columns: repeat(2, 1fr)
+      }
+    }
+
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: .85rem;
+    }
+
+    .stat-ico {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0
+    }
+
+    .stat-ico svg {
+      width: 20px;
+      height: 20px
+    }
+
+    .stat-val {
+      font-size: 1.7rem;
+      font-weight: 700;
+      font-family: var(--mono);
+      line-height: 1
+    }
+
+    .stat-lbl {
+      font-size: .75rem;
+      color: var(--text2);
+      margin-top: .25rem
+    }
+
+    /* ═══════════ TABLE ═══════════ */
+    .tbl-wrap {
+      overflow-x: auto
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .85rem
+    }
+
+    thead th {
+      padding: .65rem 1rem;
+      text-align: left;
+      font-size: .72rem;
+      font-weight: 600;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: .12s
+    }
+
+    tbody tr:last-child {
+      border-bottom: none
+    }
+
+    tbody tr:hover {
+      background: rgba(255, 255, 255, 0.02)
+    }
+
+    tbody td {
+      padding: .8rem 1rem;
+      vertical-align: middle
+    }
+
+    .empty {
+      text-align: center;
+      color: var(--text3);
+      padding: 2rem !important
+    }
+
+    /* ═══════════ LIVE PAGE ═══════════ */
+    .live-grid {
+      display: grid;
+      grid-template-columns: 250px 1fr 300px;
+      gap: 1rem;
+      min-height: 480px;
+    }
+
+    @media(max-width:1100px) {
+      .live-grid {
+        grid-template-columns: 1fr 300px
+      }
+    }
+
+    @media(max-width:900px) {
+      .live-grid {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .tl-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      overflow-y: auto;
+      padding-top: .5rem;
+    }
+
+    .t-slot {
+      padding: .6rem;
+      border-radius: var(--r2);
+      font-size: .8rem;
+      display: flex;
+      flex-direction: column;
+      gap: .2rem;
+      border-left: 2px solid transparent;
+      opacity: .6;
+    }
+
+    .t-slot.active {
+      background: var(--accent-bg);
+      border-left-color: var(--accent);
+      opacity: 1;
+    }
+
+    .t-slot.custom {
+      border: 1px solid rgba(255, 165, 2, 0.4);
+      border-left-width: 3px;
+      background: rgba(255, 165, 2, 0.05);
+    }
+
+    .t-slot.custom.active {
+      border-color: var(--yellow);
+      background: var(--yellow-bg);
+    }
+
+    .t-slot.custom.active .t-time {
+      color: var(--yellow);
+    }
+
+    .t-slot.active .t-time {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .t-slot.active .t-subj {
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .t-slot.past {
+      opacity: .3;
+    }
+
+    .t-time {
+      color: var(--text3);
+      font-family: var(--mono);
+      font-size: .7rem;
+    }
+
+    .t-subj {
+      color: var(--text2);
+      font-weight: 500;
+    }
+
+    .video-box {
+      background: #000;
+      border-radius: var(--r);
+      overflow: hidden;
+      aspect-ratio: 4/3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    #live-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none
+    }
+
+    .vid-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .75rem;
+      color: var(--text3);
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .vid-placeholder svg {
+      opacity: .25
+    }
+
+    .vid-placeholder p {
+      font-size: .85rem
+    }
+
+    /* Manual capture area */
+    #cam-preview {
+      width: 100%;
+      border-radius: 8px;
+      display: none;
+      margin-bottom: .75rem
+    }
+
+    .cap-result {
+      margin-top: .75rem;
+      display: flex;
+      flex-direction: column;
+      gap: .4rem
+    }
+
+    .cap-face {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .5rem .75rem;
+      background: var(--elevated);
+      border-radius: var(--r2);
+      font-size: .82rem;
+    }
+
+    .cap-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .7rem;
+      font-weight: 700;
+      flex-shrink: 0
+    }
+
+    .known {
+      background: var(--accent-bg);
+      color: var(--accent)
+    }
+
+    .unk {
+      background: var(--red-bg);
+      color: var(--red)
+    }
+
+    .cap-name {
+      font-weight: 600
+    }
+
+    .cap-meta {
+      color: var(--text3);
+      font-size: .75rem
+    }
+
+    /* Log */
+    .rec-log {
+      padding: .75rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: .4rem;
+      max-height: 250px;
+      overflow-y: auto
+    }
+
+    .rec-entry {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .45rem .6rem;
+      background: var(--elevated);
+      border-radius: var(--r2);
+      font-size: .8rem;
+      animation: slideIn .25s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-6px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0)
+      }
+    }
+
+    .log-empty {
+      text-align: center;
+      color: var(--text3);
+      font-size: .82rem;
+      padding: .5rem 0
+    }
+
+    /* ═══════════ ENROLL MODAL ═══════════ */
+    .enroll-body {
+      display: grid;
+      grid-template-columns: 1fr 180px;
+      gap: 1.25rem;
+      margin-top: 1rem
+    }
+
+    .enroll-cam {
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      aspect-ratio: 4/3;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    #enroll-vid {
+      width: 100%;
+      height: 100%;
+      object-fit: cover
+    }
+
+    .oval-guide {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .oval {
+      width: 130px;
+      height: 170px;
+      border: 2px dashed rgba(0, 230, 118, .5);
+      border-radius: 50%
+    }
+
+    .enroll-ctrl {
+      display: flex;
+      flex-direction: column;
+      gap: .85rem
+    }
+
+    .dots-row {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap
+    }
+
+    .dot {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      border: 2px solid var(--border2);
+      transition: .15s
+    }
+
+    .dot.on {
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 7px var(--accent)
+    }
+
+    .enroll-tip {
+      font-size: .78rem;
+      color: var(--text2);
+      line-height: 1.5
+    }
+
+    /* ═══════════ FILTER BAR ═══════════ */
+    .filter-bar {
+      display: flex;
+      gap: .75rem;
+      align-items: flex-end;
+      padding: .85rem 1.1rem;
+      flex-wrap: wrap
+    }
+
+    /* ═══════════ BUTTONS ═══════════ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .5rem 1rem;
+      border-radius: var(--r2);
+      border: none;
+      cursor: pointer;
+      font-size: .85rem;
+      font-weight: 500;
+      font-family: var(--sans);
+      transition: .15s;
+      white-space: nowrap;
+    }
+
+    .btn:active {
+      transform: scale(.97)
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #000;
+      font-weight: 600
+    }
+
+    .btn-primary:hover {
+      background: #00c853
+    }
+
+    .btn-ghost {
+      background: var(--elevated);
+      color: var(--text);
+      border: 1px solid var(--border2)
+    }
+
+    .btn-ghost:hover {
+      background: #252936
+    }
+
+    .btn-danger {
+      background: var(--red-bg);
+      color: var(--red);
+      border: 1px solid rgba(255, 71, 87, .2)
+    }
+
+    .btn-danger:hover {
+      background: rgba(255, 71, 87, .2)
+    }
+
+    .btn-sm {
+      padding: .3rem .65rem;
+      font-size: .78rem
+    }
+
+    .btn-full {
+      width: 100%;
+      justify-content: center
+    }
+
+    .btn-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: var(--r2);
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      color: var(--text2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: .15s;
+    }
+
+    .btn-icon svg {
+      width: 15px;
+      height: 15px
+    }
+
+    .btn-icon:hover {
+      background: var(--elevated);
+      color: var(--text)
+    }
+
+    /* ═══════════ FORMS ═══════════ */
+    .fg {
+      display: flex;
+      flex-direction: column;
+      gap: .35rem
+    }
+
+    .fg label {
+      font-size: .78rem;
+      font-weight: 500;
+      color: var(--text2)
+    }
+
+    input[type=text],
+    input[type=email],
+    input[type=date],
+    input[type=search] {
+      background: var(--elevated);
+      border: 1px solid var(--border2);
+      border-radius: var(--r2);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: .875rem;
+      padding: .55rem .8rem;
+      outline: none;
+      transition: .15s;
+      width: 100%;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-bg)
+    }
+
+    input::placeholder {
+      color: var(--text3)
+    }
+
+    /* ═══════════ BADGES ═══════════ */
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 100px;
+      font-size: .7rem;
+      font-weight: 600;
+      font-family: var(--mono)
+    }
+
+    .b-green {
+      background: var(--accent-bg);
+      color: var(--accent)
+    }
+
+    .b-red {
+      background: var(--red-bg);
+      color: var(--red)
+    }
+
+    .b-yellow {
+      background: var(--yellow-bg);
+      color: var(--yellow)
+    }
+
+    .b-blue {
+      background: var(--blue-bg);
+      color: var(--blue)
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: .82rem;
+      color: var(--text2)
+    }
+
+    /* ═══════════ MODALS ═══════════ */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .72);
+      backdrop-filter: blur(3px);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 14px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: .85rem;
+    }
+
+    .modal-wide {
+      max-width: 640px
+    }
+
+    .modal-hd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between
+    }
+
+    .modal-hd h3 {
+      font-size: 1rem;
+      font-weight: 600
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: .6rem;
+      padding-top: .25rem
+    }
+
+    /* Alerts */
+    .alert {
+      padding: .6rem .85rem;
+      border-radius: var(--r2);
+      font-size: .83rem;
+      margin-bottom: .25rem
+    }
+
+    .a-error {
+      background: var(--red-bg);
+      color: var(--red);
+      border: 1px solid rgba(255, 71, 87, .2)
+    }
+
+    .a-ok {
+      background: var(--accent-bg);
+      color: var(--accent);
+      border: 1px solid rgba(0, 230, 118, .2)
+    }
+
+    /* Stats in modal */
+    .stat-rows {
+      display: flex;
+      flex-direction: column;
+      gap: .6rem
+    }
+
+    .srow {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: .6rem .8rem;
+      background: var(--elevated);
+      border-radius: var(--r2)
+    }
+
+    .srow-lbl {
+      font-size: .83rem;
+      color: var(--text2)
+    }
+
+    .srow-val {
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: .9rem
+    }
+
+    .pbar-wrap {
+      background: var(--elevated);
+      border-radius: 100px;
+      height: 7px;
+      overflow: hidden
+    }
+
+    .pbar {
+      height: 100%;
+      border-radius: 100px;
+      background: var(--accent);
+      transition: width .6s ease
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 1.25rem;
+      right: 1.25rem;
+      z-index: 300;
+      padding: .65rem 1.1rem;
+      border-radius: var(--r2);
+      font-size: .85rem;
+      background: var(--elevated);
+      border: 1px solid var(--border2);
+      box-shadow: var(--shadow);
+      animation: toastIn .25s ease;
+      max-width: 320px;
+      pointer-events: none;
+    }
+
+    .t-ok {
+      border-color: rgba(0, 230, 118, .3) !important;
+      color: var(--accent) !important
+    }
+
+    .t-err {
+      border-color: rgba(255, 71, 87, .3) !important;
+      color: var(--red) !important
+    }
+
+    @keyframes toastIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    .hidden {
+      display: none !important
+    }
+
+    /* ═══════════ DASHBOARD GRID ═══════════ */
+    .dash-grid {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 1rem
+    }
+
+    @media(max-width:960px) {
+      .dash-grid {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .sys-list {
+      padding: .85rem 1.1rem;
+      display: flex;
+      flex-direction: column;
+      gap: .6rem
+    }
+
+    .sys-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: .85rem
+    }
+
+    .sys-lbl {
+      color: var(--text2)
+    }
+
+    .sys-val {
+      font-family: var(--mono);
+      font-size: .82rem
+    }
+
+    .dot-on {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 5px var(--accent);
+      margin-right: 5px
+    }
+  </style>
+</head>
+
+<body>
+  <div class="shell">
+
+    <!-- ══════ SIDEBAR ══════ -->
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-dot"></div>
+        FaceTrack
+      </div>
+      <nav>
+        <button class="nav-btn active" data-p="dashboard" onclick="nav('dashboard')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+            <rect x="14" y="14" width="7" height="7" rx="1" />
+          </svg>
+          Dashboard
+        </button>
+        <button class="nav-btn" data-p="live" onclick="nav('live')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+          </svg>
+          Live Feed
+          <span class="live-pill">LIVE</span>
+        </button>
+        <button class="nav-btn" data-p="students" onclick="nav('students')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          Students
+        </button>
+        <button class="nav-btn" data-p="attendance" onclick="nav('attendance')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14,2 14,8 20,8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+          </svg>
+          Attendance
+        </button>
+      </nav>
+      <div class="sidebar-bottom">
+        {% if role == 'admin' %}
+        <button class="nav-btn" style="padding:.4rem 0; margin-bottom:.5rem"
+          onclick="show('settings-modal'); typeof loadCustomSessions==='function' && loadCustomSessions();">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+          Admin Settings
+        </button>
+        {% endif %}
+        <a href="/logout" class="nav-btn" style="padding:.4rem 0; margin-top:.5rem; color: var(--red);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          Sign Out
+        </a>
+        <div class="admin-tag">{{ user }} ({{ role }})</div>
+      </div>
+    </aside>
+
+    <!-- ══════ MAIN ══════ -->
+    <main>
+
+      <!-- ── DASHBOARD ── -->
+      <div id="page-dashboard" class="page active">
+        <div class="ph">
+          <div>
+            <h1>Dashboard</h1>
+            <p id="today-label"></p>
+          </div>
+          <div class="ph-actions">
+            <select id="dash-subject" onchange="loadDash()" class="btn-sm"
+              style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);padding:.3rem .65rem;outline:none;width:130px"
+              title="Filter by Subject">
+              <option value="">Subject (all)</option>
+              <option value="OE II">OE II</option>
+              <option value="ML">ML</option>
+              <option value="BDA">BDA</option>
+              <option value="HPC">HPC</option>
+              <option value="DE">DE</option>
+              <option value="T&P">T&P</option>
+              <option value="Library">Library</option>
+              <option value="Mini Project">Mini Project</option>
+              <option value="T1-ML / T2-BDA / T3-MP / T4-HPC_DE">Lab Grp Mon</option>
+              <option value="T1-BDA">T1-BDA</option>
+              <option value="T2-ML / T3-HPC_DE / T4-MP">Lab Grp Tue</option>
+              <option value="T1-MP / T2-HPC_DE / T3-ML / T4-BDA">Lab Grp Wed</option>
+              <option value="T1-HPC_DE / T2-MP / T3-BDA / T4-ML">Lab Grp Thu</option>
+            </select>
+            <select id="dash-lecture" onchange="loadDash()" class="btn-sm"
+              style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);padding:.3rem .65rem;outline:none;width:110px"
+              title="Filter by Lecture">
+              <option value="">Type (all)</option>
+              <option value="Lecture">Lecture</option>
+              <option value="Lab">Lab</option>
+              <option value="Library">Library</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" onclick="loadDash()">↺ Refresh</button>
+            <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-ico" style="background:var(--blue-bg);color:var(--blue)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+              </svg>
+            </div>
+            <div>
+              <div class="stat-val" id="s-total">—</div>
+              <div class="stat-lbl">Total Students</div>
+            </div>
+          </div>
+          <div class="stat">
+            <div class="stat-ico" style="background:var(--accent-bg);color:var(--accent)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 11 12 14 22 4" />
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+              </svg>
+            </div>
+            <div>
+              <div class="stat-val" id="s-present">—</div>
+              <div class="stat-lbl">Present Today</div>
+            </div>
+          </div>
+          <div class="stat">
+            <div class="stat-ico" style="background:var(--red-bg);color:var(--red)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            </div>
+            <div>
+              <div class="stat-val" id="s-absent">—</div>
+              <div class="stat-lbl">Absent Today</div>
+            </div>
+          </div>
+          <div class="stat">
+            <div class="stat-ico" style="background:var(--yellow-bg);color:var(--yellow)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
+            </div>
+            <div>
+              <div class="stat-val" id="s-rate">—</div>
+              <div class="stat-lbl">Attendance Rate</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dash-grid">
+          <div class="card">
+            <div class="card-hd">
+              <h3>Today's Records</h3>
+            </div>
+            <div class="tbl-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Subject</th>
+                    <th>Lecture</th>
+                    <th>Time</th>
+                    <th>Confidence</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="dash-tbody">
+                  <tr>
+                    <td colspan="7" class="empty">Loading…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-hd">
+              <h3>System Status</h3>
+            </div>
+            <div id="sys-status" class="sys-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── LIVE ── -->
+      <div id="page-live" class="page">
+        <div class="ph">
+          <div>
+            <h1>Live Recognition</h1>
+            <p>Webcam feed with automatic attendance marking</p>
+          </div>
+          <div class="ph-actions" style="align-items:center;">
+            <div id="live-session-banner"
+              style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text3);padding:.3rem .65rem;font-size:0.8rem;white-space:nowrap;margin-right:10px;">
+              Checking timetable...</div>
+            <button id="btn-start" class="btn btn-primary btn-sm" onclick="startLive()">▶ Start Feed</button>
+            <button id="btn-stop" class="btn btn-ghost btn-sm hidden" onclick="stopLive()">⏹ Stop</button>
+          </div>
+        </div>
+        <div class="live-grid">
+          <!-- 1. Daily Feed -->
+          <div class="card" style="display:flex;flex-direction:column;max-height:600px;">
+            <div class="card-hd">
+              <h3>Today's Schedule</h3>
+            </div>
+            <div class="tl-wrap" id="daily-timeline" style="padding:.85rem 1rem;">
+              <div class="log-empty" style="margin-top:2rem">Loading timeline...</div>
+            </div>
+          </div>
+          <!-- 2. Video Feed -->
+          <div class="card" style="overflow:hidden">
+            <div class="video-box" style="height:100%;aspect-ratio:unset;">
+              <img id="live-img" src="" alt="live feed" />
+              <div id="vid-ph" class="vid-placeholder">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="60" height="60">
+                  <path
+                    d="M15 10l4.553-2.069A1 1 0 0 1 21 8.87v6.26a1 1 0 0 1-1.447.9L15 14M3 8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z" />
+                </svg>
+                <p>Click <strong>Start Feed</strong> to begin</p>
+                <p>Faces recognised automatically + attendance marked</p>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:1rem">
+            <div class="card">
+              <div class="card-hd">
+                <h3>Manual Capture</h3>
+              </div>
+              <div style="padding:.85rem 1rem">
+                <video id="cam-preview" autoplay playsinline muted></video>
+                <div class="ph-actions" style="margin-bottom:.5rem">
+                  <button class="btn btn-ghost btn-sm btn-full" onclick="openCam()">📷 Open Camera</button>
+                  <button class="btn btn-primary btn-sm btn-full" onclick="capture()">Capture & Identify</button>
+                </div>
+                <div id="cap-result" class="cap-result"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-hd">
+                <h3>Recent</h3>
+              </div>
+              <div id="rec-log" class="rec-log">
+                <p class="log-empty">No recognitions yet</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── STUDENTS ── -->
+      <div id="page-students" class="page">
+        <div class="ph">
+          <div>
+            <h1>Students</h1>
+            <p id="stu-count">Loading…</p>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="show('add-modal')">+ Add Student</button>
+        </div>
+        <div class="card">
+          <div class="card-hd">
+            <input type="search" id="stu-search" placeholder="Search name or ID…" oninput="filterStu()"
+              style="max-width:260px" />
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Student ID</th>
+                  <th>Name</th>
+                  <th>Department</th>
+                  <th>Face Samples</th>
+                  <th>Registered</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="stu-tbody">
+                <tr>
+                  <td colspan="6" class="empty">Loading…</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ATTENDANCE ── -->
+      <div id="page-attendance" class="page">
+        <div class="ph">
+          <div>
+            <h1>Attendance Logs</h1>
+            <p>Filter, review and export records</p>
+          </div>
+          <div class="ph-actions">
+            <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+            <button class="btn btn-danger btn-sm" onclick="adminResetAllAttendance()">⚠ Clear Data</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="filter-bar">
+            <div class="fg"><label>Date</label><input type="date" id="f-date" onchange="loadAtt()" /></div>
+            <div class="fg"><label>Student ID</label><input type="text" id="f-sid" placeholder="e.g. STU001"
+                oninput="loadAtt()" style="width:160px" /></div>
+            <div class="fg"><label>Subject</label>
+              <select id="f-subj" onchange="loadAtt()"
+                style="background:var(--elevated);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:var(--sans);font-size:.875rem;padding:.55rem .8rem;outline:none;width:130px">
+                <option value="">Any</option>
+                <option value="OE II">OE II</option>
+                <option value="ML">ML</option>
+                <option value="BDA">BDA</option>
+                <option value="HPC">HPC</option>
+                <option value="DE">DE</option>
+                <option value="T&P">T&P</option>
+                <option value="Library">Library</option>
+                <option value="Mini Project">Mini Project</option>
+                <option value="T1-ML / T2-BDA / T3-MP / T4-HPC_DE">Lab Grp Mon</option>
+                <option value="T1-BDA">T1-BDA</option>
+                <option value="T2-ML / T3-HPC_DE / T4-MP">Lab Grp Tue</option>
+                <option value="T1-MP / T2-HPC_DE / T3-ML / T4-BDA">Lab Grp Wed</option>
+                <option value="T1-HPC_DE / T2-MP / T3-BDA / T4-ML">Lab Grp Thu</option>
+              </select>
+            </div>
+            <div class="fg"><label>Type</label>
+              <select id="f-lect" onchange="loadAtt()"
+                style="background:var(--elevated);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:var(--sans);font-size:.875rem;padding:.55rem .8rem;outline:none;width:110px">
+                <option value="">Any</option>
+                <option value="Lecture">Lecture</option>
+                <option value="Lab">Lab</option>
+                <option value="Library">Library</option>
+              </select>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="clearF()">Clear</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Subject</th>
+                  <th>Lecture</th>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th>Confidence</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="att-tbody">
+                <tr>
+                  <td colspan="9" class="empty">Loading…</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ══════ MODALS ══════ -->
+
+  <!-- Add Student -->
+  <div id="add-modal" class="overlay hidden" onclick="if(event.target===this)hide('add-modal')">
+    <div class="modal">
+      <div class="modal-hd">
+        <h3>Register New Student</h3>
+        <button class="btn-icon" onclick="hide('add-modal')">✕</button>
+      </div>
+      <div id="add-err" class="alert a-error hidden"></div>
+      <div class="fg"><label>Student ID *</label><input type="text" id="n-sid" placeholder="STU001" /></div>
+      <div class="fg"><label>Full Name *</label><input type="text" id="n-name" placeholder="Jane Doe" /></div>
+      <div class="fg"><label>Email</label><input type="text" id="n-email" placeholder="optional" /></div>
+      <div class="fg"><label>Department</label><input type="text" id="n-dept" placeholder="Computer Science" /></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost btn-sm" onclick="hide('add-modal')">Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="addStu()">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enroll Face -->
+  <div id="enroll-modal" class="overlay hidden" onclick="if(event.target===this){hide('enroll-modal');stopEnroll()}">
+    <div class="modal modal-wide">
+      <div class="modal-hd">
+        <h3>Enroll Face — <span id="enroll-name"></span></h3>
+        <button class="btn-icon" onclick="hide('enroll-modal');stopEnroll()">✕</button>
+      </div>
+      <div id="enr-err" class="alert a-error hidden"></div>
+      <div id="enr-ok" class="alert a-ok  hidden"></div>
+      <div class="enroll-body">
+        <div class="enroll-cam">
+          <video id="enroll-vid" autoplay playsinline muted></video>
+          <div class="oval-guide">
+            <div class="oval"></div>
+          </div>
+        </div>
+        <div class="enroll-ctrl">
+          <div>
+            <div style="font-size:.78rem;color:var(--text2);margin-bottom:.4rem">Samples captured</div>
+            <div class="dots-row" id="dots"></div>
+            <div style="font-size:.75rem;color:var(--text3);margin-top:.3rem" id="dots-txt">0 / 5</div>
+          </div>
+          <p class="enroll-tip">Position face in the oval. Capture 3–5 samples from slightly different angles.</p>
+          <button class="btn btn-primary btn-full btn-sm" id="cap-btn" onclick="capEnroll()">📸 Capture Sample</button>
+          <button class="btn btn-ghost btn-full btn-sm" onclick="hide('enroll-modal');stopEnroll()">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div id="stats-modal" class="overlay hidden" onclick="if(event.target===this)hide('stats-modal')">
+    <div class="modal">
+      <div class="modal-hd">
+        <h3>Attendance Stats</h3>
+        <button class="btn-icon" onclick="hide('stats-modal')">✕</button>
+      </div>
+      <div id="stats-body" class="stat-rows"></div>
+    </div>
+  </div>
+
+  {% if role == 'admin' %}
+  <!-- Admin Settings Modal -->
+        <div id="settings-modal" class="overlay hidden" onclick="if(event.target===this)hide('settings-modal')">
+          <div class="modal modal-wide">
+            <div class="modal-hd">
+              <h3>Admin Settings & Data Manager</h3>
+              <button class="btn-icon" onclick="hide('settings-modal')">✕</button>
+            </div>
+            <div style="font-size:0.8rem; color:var(--text2); margin-bottom:.5rem">Warning: Data actions below are
+              permanent and irreversible.</div>
+
+            <div class="stat-rows">
+              <!-- Clear ALL log -->
+              <div class="srow" style="flex-direction:column; align-items:stretch; gap:.5rem">
+                <div style="display:flex; justify-content:space-between">
+                  <span style="font-weight:600">Delete All Attendance Records</span>
+                  <button class="btn btn-danger btn-sm" onclick="adminResetAllAttendance()">⚠ Clear Logs</button>
+                </div>
+                <div style="font-size:0.75rem; color:var(--text3)">Permanently remove all system-wide scanned logs.
+                </div>
+              </div>
+
+              <!-- Reset Specific Session -->
+              <div class="srow" style="flex-direction:column; align-items:stretch; gap:.5rem">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+                  <span style="font-weight:600">Reset Subject/Session Data</span>
+                  <div style="display:flex; gap:5px; align-items:center">
+                    <input type="date" id="reset-date" style="padding:.2rem; font-size:.75rem">
+                    <select id="reset-subj"
+                      style="background:var(--elevated);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:var(--sans);font-size:.75rem;padding:.2rem;outline:none;">
+                      <option value="OE II">OE II</option>
+                      <option value="ML">ML</option>
+                      <option value="BDA">BDA</option>
+                      <option value="HPC">HPC</option>
+                      <option value="DE">DE</option>
+                      <option value="T&P">T&P</option>
+                      <option value="Library">Library</option>
+                      <option value="Mini Project">Mini Project</option>
+                      <option value="T1-ML / T2-BDA / T3-MP / T4-HPC_DE">Lab Grp Mon</option>
+                      <option value="T1-BDA">T1-BDA</option>
+                      <option value="T2-ML / T3-HPC_DE / T4-MP">Lab Grp Tue</option>
+                      <option value="T1-MP / T2-HPC_DE / T3-ML / T4-BDA">Lab Grp Wed</option>
+                      <option value="T1-HPC_DE / T2-MP / T3-BDA / T4-ML">Lab Grp Thu</option>
+                    </select>
+                    <button class="btn btn-ghost btn-sm" onclick="adminResetSession()">Delete Targeted</button>
+                  </div>
+                </div>
+                <div style="font-size:0.75rem; color:var(--text3)">Safely cull logs constrained specifically to the
+                  chosen criteria.</div>
+              </div>
+
+              <!-- Delete Encodings -->
+              <div class="srow"
+                style="flex-direction:column; align-items:stretch; gap:.5rem; border-color:rgba(255,71,87,.2)">
+                <div style="display:flex; justify-content:space-between">
+                  <span style="font-weight:600; color:var(--red)">Clear Stored Face Encodings</span>
+                  <button class="btn btn-danger btn-sm" style="background:var(--red); color:#fff"
+                    onclick="adminClearEncodings()">☠ Wipe Encodings</button>
+                </div>
+                <div style="font-size:0.75rem; color:var(--text3)">Destructively removes all biometric vectors mapping
+                  to registered students. Re-enrollment will be mandatory. Database IDs are unharmed.</div>
+              </div>
+
+              <!-- Custom Sessions -->
+              <div class="srow"
+                style="flex-direction:column; align-items:stretch; gap:.5rem; border-color:var(--border2); margin-top:5px">
+                <div style="display:flex; justify-content:space-between">
+                  <span style="font-weight:600">Custom Sessions Overrides</span>
+                  <button class="btn btn-primary btn-sm" onclick="show('add-custom-modal')">+ Create Session</button>
+                </div>
+                <div style="font-size:0.75rem; color:var(--text3)">Replace timetable blocks or add manual overrides.
+                  Defaults back to normal when finished automatically.</div>
+                <div id="custom-sessions-list"
+                  style="margin-top:10px; max-height:150px; overflow-y:auto; display:flex; flex-direction:column; gap:.3rem;">
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Admin Add Custom Session Modal -->
+        <div id="add-custom-modal" class="overlay hidden" onclick="if(event.target===this)hide('add-custom-modal')">
+          <div class="modal">
+            <div class="modal-hd">
+              <h3>Create Custom Session</h3>
+              <button class="btn-icon" onclick="hide('add-custom-modal')">✕</button>
+            </div>
+            <div class="fg"><label>Date *</label><input type="date" id="cs-date" /></div>
+            <div style="display:flex; gap:10px;">
+              <div class="fg" style="flex:1"><label>Start Time *</label><input type="time" id="cs-start" /></div>
+              <div class="fg" style="flex:1"><label>End Time *</label><input type="time" id="cs-end" /></div>
+            </div>
+            <div class="fg"><label>Subject *</label><input type="text" id="cs-subject"
+                placeholder="e.g. Special Lecture" /></div>
+            <div class="fg"><label>Type *</label>
+              <select id="cs-lecture"
+                style="background:var(--elevated);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:var(--sans);font-size:.875rem;padding:.55rem .8rem;outline:none;width:100%">
+                <option value="Lecture">Lecture</option>
+                <option value="Lab">Lab</option>
+                <option value="Library">Library</option>
+                <option value="Workshop">Workshop</option>
+                <option value="Exam">Exam</option>
+              </select>
+            </div>
+            <div class="modal-actions" style="margin-top:10px">
+              <button class="btn btn-ghost btn-sm" onclick="hide('add-custom-modal')">Cancel</button>
+              <button class="btn btn-primary btn-sm" onclick="addCustomSession()">Create Override</button>
+            </div>
+          </div>
+        </div>
+
+  {% endif %}
+  <div id="toast" class="hidden"></div>
+
+        <!-- ══════ SCRIPT ══════ -->
+        <script>
+          const API = '';
+          let students = [];
+          let enrollId = null;
+          let enrollStream = null;
+          let camStream = null;
+          let canvas = document.createElement('canvas');
+          let liveActive = false;
+
+          // ── Init ──────────────────────────────────────
+          document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('today-label').textContent =
+              new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('f-date').value = today();
+            loadDash();
+          });
+
+          // ── Nav ───────────────────────────────────────
+          function nav(p) {
+            document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('page-' + p).classList.add('active');
+            document.querySelector(`[data-p="${p}"]`).classList.add('active');
+            if (p === 'dashboard') loadDash();
+            if (p === 'students') loadStudents();
+            if (p === 'attendance') loadAtt();
+            if (p === 'live') loadDailySchedule();
+          }
+
+          // ── API Wrapper ──────────────────────────────────────────────
+          async function api(path, opts = {}) {
+            try {
+              // Synchronous CSRF Injection dynamically pulling from server render headers
+              const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+              if (csrfMeta && ['POST', 'DELETE', 'PUT'].includes(opts.method)) {
+                opts.headers = opts.headers || {};
+                opts.headers['X-CSRFToken'] = csrfMeta.content;
+              }
+              
+              const r = await fetch(API + path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+              return r;
+            } catch (e) { throw e; }
+          }
+
+          // ── Dashboard ─────────────────────────────────
+          async function loadDash() {
+            const subj = document.getElementById('dash-subject')?.value || '';
+            const lect = document.getElementById('dash-lecture')?.value || '';
+            const url = `/api/attendance/summary?subject=${encodeURIComponent(subj)}&lecture=${encodeURIComponent(lect)}`;
+            const r = await api(url);
+            const d = await r.json();
+            document.getElementById('s-total').textContent = d.total_students;
+            document.getElementById('s-present').textContent = d.present;
+            document.getElementById('s-absent').textContent = d.absent;
+            document.getElementById('s-rate').textContent = d.rate + '%';
+
+            const tb = document.getElementById('dash-tbody');
+            tb.innerHTML = d.records.length ? d.records.map(r => `
+    <tr>
+      <td><code>${r.student_id}</code></td>
+      <td><strong>${r.name}</strong></td>
+      <td style="color:var(--text2)">${r.subject || 'General'}</td>
+      <td style="color:var(--text2)">${r.lecture || 'Session'}</td>
+      <td style="color:var(--accent);font-family:var(--mono)">${r.time}</td>
+      <td><span style="font-family:var(--mono);color:${confColor(r.confidence)}">${r.confidence || 0}%</span></td>
+      <td><span class="badge b-green">${r.status}</span></td>
+    </tr>`).join('') : '<tr><td colspan="7" class="empty">No attendance today</td></tr>';
+
+            // cache count for sys status
+            try {
+              const sr = await api('/api/students');
+              if (sr.ok) {
+                const ss = await sr.json();
+                const enc = ss.reduce((a, s) => a + s.samples, 0);
+                document.getElementById('sys-status').innerHTML = `
+        <div class="sys-row"><span class="sys-lbl">Engine</span><span class="sys-val"><span class="dot-on"></span>Running</span></div>
+        <div class="sys-row"><span class="sys-lbl">Registered Students</span><span class="sys-val">${ss.length}</span></div>
+        <div class="sys-row"><span class="sys-lbl">Face Encodings</span><span class="sys-val">${enc}</span></div>
+        <div class="sys-row"><span class="sys-lbl">Tolerance</span><span class="sys-val">0.45</span></div>
+        <div class="sys-row"><span class="sys-lbl">Cooldown</span><span class="sys-val">30 min</span></div>
+        <div class="sys-row"><span class="sys-lbl">Database</span><span class="sys-val">JSON (local)</span></div>`;
+              }
+            } catch (e) { }
+          }
+
+          // ── Students ──────────────────────────────────
+          async function loadStudents() {
+            try {
+              const r = await api('/api/students');
+              if (!r.ok) throw new Error('API failed');
+              students = await r.json();
+              renderStudents(students);
+              document.getElementById('stu-count').textContent = `${students.length} registered student${students.length !== 1 ? 's' : ''}`;
+            } catch (e) {
+              console.error(e);
+              renderStudents([]);
+              document.getElementById('stu-count').textContent = `Error loading students`;
+            }
+          }
+
+          function renderStudents(list) {
+            const tb = document.getElementById('stu-tbody');
+            if (!list.length) { tb.innerHTML = '<tr><td colspan="6" class="empty">No students yet</td></tr>'; return }
+            tb.innerHTML = list.map(s => {
+              const bc = s.samples === 0 ? 'b-red' : s.samples < 3 ? 'b-yellow' : 'b-green';
+              return `<tr>
+      <td><code>${s.student_id}</code></td>
+      <td><strong>${s.name}</strong></td>
+      <td style="color:var(--text2)">${s.department || '—'}</td>
+      <td><span class="badge ${bc}">${s.samples} / 5</span></td>
+      <td style="color:var(--text3);font-size:.8rem">${s.created}</td>
+      <td>
+        <div style="display:flex;gap:.35rem">
+          <button class="btn btn-ghost btn-sm" onclick="openEnroll('${s.student_id}','${s.name}')">📸 Enroll</button>
+          <button class="btn btn-ghost btn-sm" onclick="viewStats('${s.student_id}')">Stats</button>
+          <button class="btn btn-danger btn-sm" onclick="delStu('${s.student_id}','${s.name}')">Del</button>
+        </div>
+      </td>
+    </tr>`;
+            }).join('');
+          }
+
+          function filterStu() {
+            const q = document.getElementById('stu-search').value.toLowerCase();
+            renderStudents(students.filter(s => s.name.toLowerCase().includes(q) || s.student_id.toLowerCase().includes(q)));
+          }
+
+          async function addStu() {
+            const sid = v('n-sid'), name = v('n-name'), email = v('n-email'), dept = v('n-dept');
+            const err = document.getElementById('add-err');
+            if (!sid || !name) { showAlert(err, 'Student ID and Name are required.'); return }
+            const r = await api('/api/students', { method: 'POST', body: JSON.stringify({ student_id: sid, name, email, department: dept }) });
+            const d = await r.json();
+            if (!r.ok) { showAlert(err, d.error); return }
+            hideEl(err); hide('add-modal');
+            clear('n-sid', 'n-name', 'n-email', 'n-dept');
+            toast('Student created!', 'ok'); loadStudents();
+          }
+
+          async function delStu(sid, name) {
+            if (!confirm(`Delete "${name}"?`)) return;
+            await api(`/api/students/${sid}`, { method: 'DELETE' });
+            toast('Deleted', 'ok'); loadStudents();
+          }
+
+          // ── Stats ─────────────────────────────────────
+          async function viewStats(sid) {
+            const r = await api(`/api/students/${sid}/stats`);
+            const d = await r.json();
+            const pct = d.attendance_percentage || 0;
+            const col = pct >= 75 ? 'var(--accent)' : pct >= 50 ? 'var(--yellow)' : 'var(--red)';
+            document.getElementById('stats-body').innerHTML = `
+    <div class="srow"><span class="srow-lbl">Student</span><span class="srow-val">${d.name}</span></div>
+    <div class="srow"><span class="srow-lbl">Days Present</span><span class="srow-val">${d.total_present}</span></div>
+    <div class="srow"><span class="srow-lbl">Since Registration</span><span class="srow-val">${d.days_since_registration} days</span></div>
+    <div class="srow"><span class="srow-lbl">Last Seen</span><span class="srow-val">${d.last_seen}</span></div>
+    <div>
+      <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:5px">
+        <span style="color:var(--text2)">Attendance Rate</span>
+        <strong style="color:${col}">${pct}%</strong>
+      </div>
+      <div class="pbar-wrap"><div class="pbar" style="width:${pct}%;background:${col}"></div></div>
+    </div>`;
+            show('stats-modal');
+          }
+
+          // ── Enroll face ───────────────────────────────
+          async function openEnroll(sid, name) {
+            enrollId = sid;
+            document.getElementById('enroll-name').textContent = name;
+            hideEl(document.getElementById('enr-err'));
+            hideEl(document.getElementById('enr-ok'));
+            updateDots(0);
+            show('enroll-modal');
+            try {
+              enrollStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+              document.getElementById('enroll-vid').srcObject = enrollStream;
+            } catch (e) {
+              showAlert(document.getElementById('enr-err'), 'Camera denied. Allow camera access.');
+            }
+          }
+
+          async function capEnroll() {
+            if (!enrollStream) return;
+            const vid = document.getElementById('enroll-vid');
+            canvas.width = vid.videoWidth; canvas.height = vid.videoHeight;
+            canvas.getContext('2d').drawImage(vid, 0, 0);
+            const b64 = canvas.toDataURL('image/jpeg', .9);
+
+            const btn = document.getElementById('cap-btn');
+            btn.disabled = true; btn.textContent = 'Processing…';
+            const err = document.getElementById('enr-err'), ok = document.getElementById('enr-ok');
+            hideEl(err); hideEl(ok);
+
+            const r = await api(`/api/students/${enrollId}/enroll`, { method: 'POST', body: JSON.stringify({ image_base64: b64 }) });
+            const d = await r.json();
+            if (!r.ok) { showAlert(err, d.error); }
+            else {
+              updateDots(d.total);
+              showAlert(ok, `Sample ${d.total}/${d.max} captured! ${d.total < d.max ? 'Try a different angle.' : 'All done ✓'}`);
+              loadStudents();
+            }
+            btn.disabled = false; btn.textContent = '📸 Capture Sample';
+          }
+
+          function updateDots(n) {
+            document.getElementById('dots-txt').textContent = `${n} / 5`;
+            document.getElementById('dots').innerHTML =
+              Array.from({ length: 5 }, (_, i) => `<div class="dot${i < n ? ' on' : ''}"></div>`).join('');
+          }
+
+          function stopEnroll() {
+            if (enrollStream) { enrollStream.getTracks().forEach(t => t.stop()); enrollStream = null; }
+          }
+
+          let livePoller = null;
+          let scheduleData = [];
+          let serverOffsetMs = 0;
+          let uiPoller = null;
+
+          async function loadDailySchedule() {
+            try {
+              const r = await api('/api/timetable/daily');
+              const d = await r.json();
+              scheduleData = d.schedule || [];
+              if (d.is_weekend) scheduleData = [];
+              const servTime = new Date(d.server_time).getTime();
+              serverOffsetMs = servTime - Date.now();
+              renderTimeline();
+              if (uiPoller) clearInterval(uiPoller);
+              uiPoller = setInterval(renderTimeline, 1000);
+            } catch (e) { }
+          }
+
+          function timeToSec(timeStr) {
+            const [h, m] = timeStr.split(':').map(Number);
+            return h * 3600 + m * 60;
+          }
+
+          function renderTimeline() {
+            const tl = document.getElementById('daily-timeline');
+            if (!tl) return;
+            if (!scheduleData.length) {
+              tl.innerHTML = '<div class="log-empty" style="margin-top:2rem">No schedule today</div>';
+              return;
+            }
+
+            const now = new Date(Date.now() + serverOffsetMs);
+            const nowSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+
+            let html = '';
+            scheduleData.forEach((slot, i) => {
+              const startSec = timeToSec(slot.start);
+              const endSec = timeToSec(slot.end);
+              let state = '';
+              let countdown = '';
+
+              if (nowSec >= endSec) {
+                state = 'past';
+              } else if (nowSec >= startSec && nowSec < endSec) {
+                state = 'active';
+                const rem = endSec - nowSec;
+                const m = Math.floor(rem / 60); const s = rem % 60;
+                countdown = `<div style="font-size:0.75rem;font-weight:normal;opacity:0.9;padding-top:.15rem">⏱ ${m}m ${s}s remaining in ${slot.subject === 'Break' ? 'Break' : 'Session'}</div>`;
+              } else if (nowSec >= startSec - 900 && nowSec < startSec) {
+                state = 'active'; // 15-min pre-window
+                const rem = startSec - nowSec;
+                const m = Math.floor(rem / 60); const s = rem % 60;
+                countdown = `<div style="font-size:0.75rem;color:#00e676;opacity:0.9;padding-top:.15rem">⏱ Starts in ${m}m ${s}s</div>`;
+              }
+
+              if (slot.is_custom) state += ' custom';
+
+              html += `<div class="t-slot ${state}">
+               <div style="display:flex;justify-content:space-between;align-items:center;">
+                 <span class="t-time">${slot.start} - ${slot.end}</span>
+                 <span class="t-type">${slot.lecture}</span>
+               </div>
+               <div class="t-subj">${slot.subject}</div>
+               ${countdown}
+             </div>`;
+            });
+            tl.innerHTML = html;
+
+            // Auto-shutdown if past last section
+            if (scheduleData.length > 0 && liveActive) {
+              const lastSlot = scheduleData[scheduleData.length - 1];
+              if (nowSec >= timeToSec(lastSlot.end)) {
+                stopLive();
+                toast('Schedule complete. System locked.', 'ok');
+              }
+            }
+          }
+
+          async function checkTimetable() {
+            try {
+              const r = await api('/api/timetable/current');
+              const d = await r.json();
+              const banner = document.getElementById('live-session-banner');
+              if (d.status === "open") {
+                banner.style.borderColor = "var(--accent)";
+                banner.style.color = "var(--accent)";
+                banner.innerHTML = `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 5px var(--accent);margin-right:4px;"></span> <strong>OPEN:</strong> ${d.session.subject} (${d.session.start} - ${d.session.end})`;
+              } else {
+                banner.style.borderColor = "var(--red)";
+                banner.style.color = "var(--red)";
+                banner.innerHTML = `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 5px var(--red);margin-right:4px;"></span> <strong>CLOSED:</strong> ${d.msg}`;
+              }
+            } catch (e) { }
+          }
+
+          // ── Live feed ─────────────────────────────────
+          async function startLive() {
+            toast('Starting camera backend...', '');
+            try {
+              await api('/api/camera/start', { method: 'POST' });
+            } catch (e) {
+              toast('Error connecting to camera', 'err');
+            }
+
+            liveActive = true;
+            const img = document.getElementById('live-img');
+            img.src = '/video_feed?ts=' + Date.now();
+            img.style.display = 'block';
+            document.getElementById('vid-ph').classList.add('hidden');
+            document.getElementById('btn-start').classList.add('hidden');
+            document.getElementById('btn-stop').classList.remove('hidden');
+            toast('Live feed started', 'ok');
+
+            checkTimetable();
+            if (!livePoller) livePoller = setInterval(checkTimetable, 10000); // Check every 10s
+          }
+
+          async function stopLive() {
+            liveActive = false;
+            try {
+              await api('/api/camera/stop', { method: 'POST' });
+            } catch (e) { }
+
+            const img = document.getElementById('live-img');
+            img.src = ''; img.style.display = 'none';
+            document.getElementById('vid-ph').classList.remove('hidden');
+            document.getElementById('btn-start').classList.remove('hidden');
+            document.getElementById('btn-stop').classList.add('hidden');
+
+            if (livePoller) { clearInterval(livePoller); livePoller = null; }
+            document.getElementById('live-session-banner').style.borderColor = "var(--border2)";
+            document.getElementById('live-session-banner').style.color = "var(--text3)";
+            document.getElementById('live-session-banner').innerHTML = "Tracking stopped.";
+          }
+
+          // ── Manual camera ─────────────────────────────
+          async function openCam() {
+            try {
+              camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+              const v = document.getElementById('cam-preview');
+              v.srcObject = camStream; v.style.display = 'block';
+            } catch (e) { toast('Camera access denied', 'err'); }
+          }
+
+          async function capture() {
+            const vid = document.getElementById('cam-preview');
+            if (!camStream || !vid.srcObject) { await openCam(); return; }
+            canvas.width = vid.videoWidth || 640; canvas.height = vid.videoHeight || 480;
+            canvas.getContext('2d').drawImage(vid, 0, 0);
+            const b64 = canvas.toDataURL('image/jpeg', .9);
+
+            const res = document.getElementById('cap-result');
+            res.innerHTML = '<p style="color:var(--text3);font-size:.82rem">Identifying…</p>';
+
+            const r = await api('/api/identify', { method: 'POST', body: JSON.stringify({ image_base64: b64 }) });
+            const d = await r.json();
+
+            if (!r.ok) {
+              res.innerHTML = `<p style="color:var(--red);font-size:.82rem"><strong>Skipped:</strong> ${d.error || 'Server error'}</p>`;
+              return;
+            }
+
+            if (!d.faces || !d.faces.length) { res.innerHTML = '<p style="color:var(--yellow);font-size:.82rem">No face detected.</p>'; return; }
+
+            res.innerHTML = d.faces.map(f => `
+    <div class="cap-face">
+      <div class="cap-icon ${f.recognized ? 'known' : 'unk'}">${f.recognized ? '✓' : '?'}</div>
+      <div>
+        <div class="cap-name">${f.name}</div>
+        <div class="cap-meta">${f.confidence}% conf${f.marked ? ' · ✅ Attendance marked' : f.recognized ? ' · Already marked' : ''}</div>
+      </div>
+    </div>`).join('');
+
+            addLog(d.faces);
+          }
+
+          function addLog(faces) {
+            const log = document.getElementById('rec-log');
+            const empty = log.querySelector('.log-empty');
+            if (empty) empty.remove();
+            const t = new Date().toLocaleTimeString();
+            faces.forEach(f => {
+              const e = document.createElement('div');
+              e.className = 'rec-entry';
+              e.innerHTML = `<div class="cap-icon ${f.recognized ? 'known' : 'unk'}">${f.recognized ? '✓' : '?'}</div>
+      <div><div class="cap-name">${f.name}</div><div class="cap-meta">${f.confidence}% · ${t}</div></div>`;
+              log.prepend(e);
+              while (log.children.length > 20) log.lastChild.remove();
+            });
+          }
+
+          // ── Attendance ────────────────────────────────
+          async function loadAtt() {
+            let url = '/api/attendance?limit=300';
+            const d = document.getElementById('f-date').value;
+            const s = document.getElementById('f-sid').value.trim();
+            const subj = document.getElementById('f-subj').value.trim();
+            const lect = document.getElementById('f-lect').value.trim();
+            if (d) url += `&date=${d}`;
+            if (s) url += `&student_id=${encodeURIComponent(s)}`;
+            if (subj) url += `&subject=${encodeURIComponent(subj)}`;
+            if (lect) url += `&lecture=${encodeURIComponent(lect)}`;
+            const r = await api(url);
+            const records = await r.json();
+            const tb = document.getElementById('att-tbody');
+            tb.innerHTML = records.length ? records.map((r, i) => `
+    <tr>
+      <td style="color:var(--text3)">${i + 1}</td>
+      <td><code>${r.student_id}</code></td>
+      <td>${r.name}</td>
+      <td style="color:var(--text2)">${r.subject || '-'}</td>
+      <td style="color:var(--text2)">${r.lecture || '-'}</td>
+      <td style="color:var(--text2)">${r.date}</td>
+      <td style="font-family:var(--mono);color:${confColor(r.confidence)}">${r.time}</td>
+      <td style="font-family:var(--mono);color:${confColor(r.confidence)}">${r.confidence || 0}%</td>
+      <td><span class="badge b-green">${r.status}</span></td>
+    </tr>`).join('')
+              : '<tr><td colspan="9" class="empty">No records found</td></tr>';
+          }
+
+          function clearF() {
+            document.getElementById('f-date').value = '';
+            document.getElementById('f-sid').value = '';
+            document.getElementById('f-subj').value = '';
+            document.getElementById('f-lect').value = '';
+            loadAtt();
+          }
+
+          async function adminResetAllAttendance() {
+            if (!confirm("Are you sure you want to clear ALL attendance data across all sessions? This cannot be undone.")) return;
+            const r = await api('/api/admin/reset', { method: 'DELETE' });
+            const d = await r.json();
+            if (r.ok) {
+              toast(d.message, 'ok');
+              loadAtt(); loadDash();
+            } else {
+              toast('Failed to reset attendance logs', 'err');
+            }
+          }
+
+          async function adminResetSession() {
+            const d_val = document.getElementById('reset-date').value;
+            const s_val = document.getElementById('reset-subj').value;
+
+            if (!d_val || !s_val) {
+              toast('Please select both a date and a subject to target.', 'err');
+              return;
+            }
+
+            if (!confirm(`Delete session data exactly matching Subject: [${s_val}] on Date: [${d_val}]?`)) return;
+
+            const r = await api('/api/admin/attendance/session', {
+              method: 'DELETE',
+              body: JSON.stringify({ subject: s_val, date: d_val })
+            });
+            const d = await r.json();
+            if (r.ok) {
+              toast(d.message, 'ok');
+              loadAtt(); loadDash();
+            } else {
+              toast(d.error || 'Failed to clean session.', 'err');
+            }
+          }
+
+          async function adminClearEncodings() {
+            if (!confirm("CRITICAL WARNING: Wiping facial encodings will destroy all trained data models. Are you certain you want to proceed?")) return;
+            const r = await api('/api/admin/encodings', { method: 'DELETE' });
+            const d = await r.json();
+            if (r.ok) {
+              toast(d.message, 'ok');
+              loadStudents(); loadDash();
+            } else {
+              toast('Failed to drop trained encodings cache.', 'err');
+            }
+          }
+
+          async function loadCustomSessions() {
+            const r = await api('/api/admin/custom_sessions');
+            const d = await r.json();
+            const list = document.getElementById('custom-sessions-list');
+            if (!d.length) {
+              list.innerHTML = '<div class="empty" style="padding:.5rem!important; font-size:.75rem">No custom sessions active.</div>';
+              return;
+            }
+            list.innerHTML = d.map(s => `
+    <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface); padding:.4rem .6rem; border-radius:var(--r2); border:1px solid var(--border2); font-size:.75rem">
+      <div>
+        <strong style="color:var(--accent)">${s.date}</strong> — <span>${s.start} to ${s.end}</span><br>
+        <span style="color:var(--text2)">${s.subject} (${s.lecture})</span>
+      </div>
+      <button class="btn-icon" style="color:var(--red)" onclick="deleteCustomSession('${s.id}')">✕</button>
+    </div>
+  `).join('');
+          }
+
+          async function addCustomSession() {
+            const payload = {
+              date: document.getElementById('cs-date').value,
+              start: document.getElementById('cs-start').value,
+              end: document.getElementById('cs-end').value,
+              subject: document.getElementById('cs-subject').value,
+              lecture: document.getElementById('cs-lecture').value
+            };
+            if (!payload.date || !payload.start || !payload.end || !payload.subject) {
+              toast('All fields must be filled out', 'err');
+              return;
+            }
+            const r = await api('/api/admin/custom_sessions', { method: 'POST', body: JSON.stringify(payload) });
+            if (r.ok) {
+              toast('Custom Session active!', 'ok');
+              hide('add-custom-modal');
+              loadCustomSessions();
+              loadDailySchedule();
+              loadDash();
+            } else {
+              toast('Failed to create session.', 'err');
+            }
+          }
+
+          async function deleteCustomSession(id) {
+            if (!confirm('Drop this manual override and return to normal timetable?')) return;
+            const r = await api(`/api/admin/custom_sessions/${id}`, { method: 'DELETE' });
+            if (r.ok) {
+              toast('Override removed.', 'ok');
+              loadCustomSessions();
+              loadDailySchedule();
+              loadDash();
+            }
+          }
+
+          async function exportCSV() {
+            const d = document.getElementById('f-date')?.value || '';
+            const url = `/api/attendance/export${d ? '?date=' + d : ''}`;
+            const r = await fetch(url);
+            const blob = await r.blob();
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `attendance_${d || 'all'}.csv`;
+            a.click();
+            toast('CSV exported!', 'ok');
+          }
+
+          // ── Helpers ───────────────────────────────────
+          function today() { return new Date().toISOString().split('T')[0] }
+          function v(id) { return document.getElementById(id).value.trim() }
+          function show(id) { document.getElementById(id).classList.remove('hidden') }
+          function hide(id) { document.getElementById(id).classList.add('hidden') }
+          function hideEl(el) { el.classList.add('hidden') }
+          function showAlert(el, msg) { el.textContent = msg; el.classList.remove('hidden') }
+          function clear(...ids) { ids.forEach(id => { const e = document.getElementById(id); if (e) e.value = '' }) }
+          function confColor(c) { return c >= 80 ? 'var(--accent)' : c >= 60 ? 'var(--yellow)' : 'var(--red)' }
+
+          let toastT = null;
+          function toast(msg, type = '') {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.className = type === 'ok' ? 't-ok' : type === 'err' ? 't-err' : '';
+            t.classList.remove('hidden');
+            if (toastT) clearTimeout(toastT);
+            toastT = setTimeout(() => t.classList.add('hidden'), 3000);
+          }
+        </script>
+</body>
+
+</html>
