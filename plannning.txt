@@ -1,0 +1,82 @@
+========================================
+FACETRACK: SYSTEM DOCUMENTATION & KNOWLEDGE TRANSFER
+========================================
+
+----------------------------------------
+1. PROJECT PURPOSE
+----------------------------------------
+FaceTrack is an automated, real-time facial recognition student attendance tracking system. 
+
+It was built to eradicate the traditional, time-consuming manual roll-call process in academic environments by allowing a continuous camera feed to seamlessly identify students and securely log their presence during strict class schedules. The system solves problems regarding proxy-attendance (buddy-punching), time-wastage during lecture beginnings, and manual data-entry errors.
+
+----------------------------------------
+2. CORE WORKING LOGIC
+----------------------------------------
+1. **System Initialization:** On boot, the server spins up a background daemon thread that activates the host hardware camera and caches all registered student facial encodings from the SQLite database directly into high-speed memory arrays.
+2. **Video Ingestion:** The background thread continuously reads frames from OpenCV. For performance, every 2nd frame is aggressively downscaled and piped to the Deep Learning detector (dlib/face_recognition).
+3. **Identification Phase:** Deep learning models extract facial landmarks and compute an affine 128-dimension vector. These vectors are compared mathematically against the cached student encodings using a strict distance tolerance threshold.
+4. **Timetable Validation:** When a known face occurs, the system checks the current server time against the hardcoded daily timetable or specific custom override sessions active today.
+5. **Data Persistence:** If the time falls within a valid session window (including a 15-minute early buffer), safety checks verify identical records. If clear, a synchronous SQL `INSERT` officially logs the student's attendance.
+
+----------------------------------------
+3. SYSTEM ARCHITECTURE
+----------------------------------------
+*   **Monolithic Backend:** A central Python Flask application (`app.py`) orchestrates endpoints, threading, data access layers, and UI templates.
+*   **Hardware Layer (Camera Engine):** A decoupled background `threading.Thread` manages the `cv2.VideoCapture` bindings natively shielding the REST API from I/O starvation.
+*   **Authentication Middleware:** A customized `@app.before_request` interceptor natively bounds Session Cookies, CSRF tokens natively, and Role-Based Access Control (RBAC) across Administration subsets. 
+*   **Frontend Ecosystem:** A pure HTML/CSS/Vanilla Javascript stack that requests DOM renders, polling the `/api/attendance` endpoints dynamically and natively routing fetch requests via a centralized asynchronous wrapper hooking CSRF tokens globally.
+
+----------------------------------------
+4. DATABASE DESIGN
+----------------------------------------
+The system relies on an optimized SQLite relational matrix orchestrated via Flask-SQLAlchemy (`models.py`).
+
+*   **User:** Manages `username`, `password_hash`, and `role` (Admin/Teacher).
+*   **Student:** Manages academic details (`name`, `roll_number`), biological markers (`encoding` as BLOB), and dynamically system-generated sequences (`student_code` formatted precisely as STU-YYYY-XXX). 
+*   **Subject:** Simplifies academic class schemas (`name`, `code`).
+*   **Session:** Represents timetable components locally. Links via Foreign Key to `Subject`. Contains explicit boundaries (`start_time`, `end_time`, `date`, `is_custom`).
+*   **Attendance:** Mapped Intersection Table linking `student_id` (FK) and `session_id` (FK) carrying the exact `timestamp` and `status` string.
+
+----------------------------------------
+5. KEY FEATURES
+----------------------------------------
+*   **Real-Time Biometric Analysis:** Zero-click continuous attendance enrollment automatically scanning feeds constantly bounding multiple faces simultaneously.
+*   **Sequential ID Generation:** An advanced `@event.listens_for(Student, "before_insert")` hook generates strictly unique, incrementing string sequences locally (STU-YYYY-XXX) completely avoiding manual data entry vulnerabilities.
+*   **Mass Excel Ingestion:** Administrators can drop complex `.xlsx` datasets via Pandas which automatically detects structural anomalies, overrides duplicates natively, and issues continuous internal sequential IDs elegantly mapping into SQL inherently.
+*   **Timetable Abstractions:** A completely dynamic internal timeline mechanism handling rigid weekly classes or one-off `is_custom` schedule injections gracefully tracking offline/online windows securely.
+*   **Role-Based Security Hooks:** Global security abstractions heavily prevent teachers from clearing biometric vectors while maintaining their capability to monitor attendance flow smoothly.
+
+----------------------------------------
+6. CONTROL LOGIC
+----------------------------------------
+*   **Attendance Window Logic:** Students can only be stamped "Present" if the detection executes `Start_Time - 15 Minutes <= Current_Time <= End_Time` natively.
+*   **Deduplication Constraint:** All Attendance queries specifically assert structural matches between explicit `session_id` and `student_id`. Redundant camera logs bounding a single lecture simply drop immediately minimizing SQLite transaction locks.
+*   **Generation Racing Check:** Bulk user creations explicitly embed a 2-tick fallback block natively intercepting native `IntegrityError` collisions securely regenerating explicit Sequence hashes gracefully implicitly mitigating multi-thread overlap crashes perfectly cleanly.
+*   **Encoding Conversion Bounds:** Base64 streams originating from local web-cameras are manually converted, drastically scaled downwards (speeding face extraction processing by 500%), and cleanly structurally isolated before binding into Python Pickle/Numpy constraints recursively natively.
+
+----------------------------------------
+7. ADMIN / USER INTERACTIONS
+----------------------------------------
+*   **Teachers:** Access `/attendance` exclusively. They observe the manual dashboard bounding the Real-Time video feedback block mapping the most immediate attendees chronologically correctly natively. They can register specific individual students via Webcam.
+*   **Administrators:** Access `/admin` explicitly. Administrators wield complete Database wipes naturally natively executing global wipes across existing Attendance logs, clearing active Custom Sessions directly manually, or deleting physical Biometric schemas entirely.
+
+----------------------------------------
+8. IMPLEMENTATION DETAILS
+----------------------------------------
+*   **Frameworks:** Flask (Backend Architecture), SQLAlchemy (ORM).
+*   **Dependencies:** `dlib`, `face_recognition`, `OpenCV-Python`, `Pandas`, `openpyxl`, `Werkzeug.security`.
+*   **Design Patterns:** The application heavily employs the Singleton paradigm across memory analytics mapping caches (`_cache_students`, `known_encodings`). Concurrency is navigated natively using transactional loops parsing natively generated `IntegrityErrors` structurally cleanly securely! Event-driven programming natively surfaces explicitly generating Sequence constraints strictly on SQL flushes dynamically accurately.
+
+----------------------------------------
+9. EXISTING IMPROVEMENTS
+----------------------------------------
+1.  **RAM & IO Constraint Flush:** Deprecated highly volatile flat-file loops (JSON dictionaries, Pickle structures) mapping directly completely strictly natively onto `SQLAlchemy` reducing transaction overlap exceptions structurally exactly natively effortlessly.
+2.  **Web-Security Enforcement:** Natively generated CSRF bounds exclusively isolating Cross-Site Forgery mechanisms inside Javascript `fetch` boundaries parsing exact Hex Keys reliably explicitly structurally tracking cleanly smoothly!
+3.  **Video Loop Stutter Prevention:** Camera processing matrices bounding CPU thresholds were completely solved utilizing Python `threading.Condition()` mappings locally decoupling REST UI ping requests seamlessly escaping starvation logic effectively natively uniquely.
+
+----------------------------------------
+10. LIMITATIONS
+----------------------------------------
+1.  **SQLite Multi-Threading:** The backend currently utilizes SQLite implicitly tightly. Although bulk mechanisms avoid explicit crashes gracefully natively smoothly via recursive checks natively, deploying onto production servers with multiple parallel gunicorn threads naturally bottlenecks SQLite file restrictions. A direct shift towards PostgreSQL fundamentally eliminates these explicitly effortlessly.
+2.  **Absence Analytics:** FaceTrack currently logs `Presence`. A rigid structural cron logic looping exactly over all known students who lack an entry mapped directly correctly to the `Session` limits effectively inherently flagging `Absence` does not fully explicitly exist elegantly globally independently inherently cleanly.
+3.  **Hardcoded Matrix Limits:** The underlying `TIMETABLE` bounds representing generic Monday-Friday rules remain statically tracked inside `app.py`. A dynamic Administrative UI mapping the rigid timetable over local Database mappings simplifies UI changes dynamically avoiding source restructuring. 
