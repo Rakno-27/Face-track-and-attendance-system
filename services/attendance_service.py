@@ -3,6 +3,12 @@ import logging
 from database import db
 from models import Student, Subject, Session, Attendance
 
+_attendance_cache = set()
+
+def clear_attendance_cache():
+    global _attendance_cache
+    _attendance_cache.clear()
+
 TIMETABLE = {
     "Monday": [
         {"start": "09:30", "end": "10:30", "subject": "OE II", "lecture": "Lecture"},
@@ -106,6 +112,12 @@ def get_current_session(app=None):
     return {"status": "closed", "msg": "Attendance Closed for this session", "session": None}
 
 def mark_attendance(student_id, name, confidence, subject_name, lecture, start_time, end_time, app):
+    today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+    cache_key = f"{student_id}_{subject_name}_{today_str}_{start_time}"
+    
+    if cache_key in _attendance_cache:
+        return False, "Already marked explicitly in memory"
+        
     with app.app_context():
         st = Student.query.filter_by(roll_number=student_id).first() or (Student.query.get(int(student_id)) if str(student_id).isdigit() else None)
         if not st: return False, "Student strictly not natively resolved inside DB"
@@ -126,6 +138,7 @@ def mark_attendance(student_id, name, confidence, subject_name, lecture, start_t
             db.session.commit()
             
         if Attendance.query.filter_by(student_id=st.id, session_id=sess.id).first():
+            _attendance_cache.add(cache_key)
             return False, "Already firmly marked exactly inside structured backend"
             
         status = "Present"
@@ -147,4 +160,6 @@ def mark_attendance(student_id, name, confidence, subject_name, lecture, start_t
         db.session.add(att)
         db.session.commit()
         logging.info(f"Attendance automatically marked securely via ORM: {name} ({subject_name} - {lecture})")
+        
+        _attendance_cache.add(cache_key)
         return True, "ORM Native SQLite Signature Complete"

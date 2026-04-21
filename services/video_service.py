@@ -36,6 +36,9 @@ class CameraManager:
             
     def _loop(self):
         frame_idx = 0
+        last_session_check = 0
+        cached_session = None
+        
         while self.is_running:
             try:
                 ret, frame = self.cap.read()
@@ -49,23 +52,28 @@ class CameraManager:
             frame_idx += 1
             out_frame = frame.copy()
             
-            if frame_idx % 2 == 0:
+            if frame_idx % 5 == 0:
                 scale = 0.25
                 small = cv2.resize(frame, (0, 0), fx=scale, fy=scale)
                 results = identify_frame(small)
                 
+                if time.time() - last_session_check > 10:
+                    try:
+                        cached_session = get_current_session(app=self.app)
+                    except Exception:
+                        pass
+                    last_session_check = time.time()
+                
                 is_open = False
                 subject, lecture, start_time, end_time = "", "", "", ""
-                try:
-                    sess = get_current_session(app=self.app)
-                    is_open = (sess["status"] == "open")
+                
+                if cached_session:
+                    is_open = (cached_session.get("status") == "open")
                     if is_open:
-                        subject = sess["session"]["subject"]
-                        lecture = sess["session"]["lecture"]
-                        start_time = sess["session"]["start"]
-                        end_time = sess["session"]["end"]
-                except Exception as e:
-                    pass
+                        subject = cached_session["session"].get("subject", "")
+                        lecture = cached_session["session"].get("lecture", "")
+                        start_time = cached_session["session"].get("start", "")
+                        end_time = cached_session["session"].get("end", "")
 
                 for r in results:
                     top, right, bottom, left = [int(coord / scale) for coord in r["box"]]
