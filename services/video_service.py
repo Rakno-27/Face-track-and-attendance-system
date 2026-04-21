@@ -55,13 +55,15 @@ class CameraManager:
                 results = identify_frame(small)
                 
                 is_open = False
-                subject, lecture = "", ""
+                subject, lecture, start_time, end_time = "", "", "", ""
                 try:
                     sess = get_current_session(app=self.app)
                     is_open = (sess["status"] == "open")
                     if is_open:
                         subject = sess["session"]["subject"]
                         lecture = sess["session"]["lecture"]
+                        start_time = sess["session"]["start"]
+                        end_time = sess["session"]["end"]
                 except Exception as e:
                     pass
 
@@ -73,7 +75,7 @@ class CameraManager:
                     cv2.putText(out_frame, label, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
                     
                     if is_open and r['recognized']:
-                        mark_attendance(r["student_id"], r["name"], r["confidence"], subject, lecture, self.app)
+                        mark_attendance(r["student_id"], r["name"], r["confidence"], subject, lecture, start_time, end_time, self.app)
             
             ret, buffer = cv2.imencode('.jpg', out_frame)
             if ret:

@@ -105,7 +105,7 @@ def get_current_session(app=None):
 
     return {"status": "closed", "msg": "Attendance Closed for this session", "session": None}
 
-def mark_attendance(student_id, name, confidence, subject_name, lecture, app):
+def mark_attendance(student_id, name, confidence, subject_name, lecture, start_time, end_time, app):
     with app.app_context():
         st = Student.query.filter_by(roll_number=student_id).first() or (Student.query.get(int(student_id)) if str(student_id).isdigit() else None)
         if not st: return False, "Student strictly not natively resolved inside DB"
@@ -119,9 +119,9 @@ def mark_attendance(student_id, name, confidence, subject_name, lecture, app):
         now = datetime.datetime.now()
         today = now.strftime("%Y-%m-%d")
         
-        sess = Session.query.filter_by(subject_id=subj.id, date=today).first()
+        sess = Session.query.filter_by(subject_id=subj.id, date=today, start_time=start_time).first()
         if not sess:
-            sess = Session(subject_id=subj.id, start_time="00:00", end_time="23:59", is_custom=(lecture=="Custom"), date=today)
+            sess = Session(subject_id=subj.id, start_time=start_time, end_time=end_time, is_custom=(lecture=="Custom"), date=today)
             db.session.add(sess)
             db.session.commit()
             

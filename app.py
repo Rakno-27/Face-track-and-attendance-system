@@ -164,6 +164,8 @@ def identify():
 
     subject = session_info["session"]["subject"]
     lecture = session_info["session"]["lecture"]
+    start_time = session_info["session"]["start"]
+    end_time = session_info["session"]["end"]
 
     raw = base64.b64decode(b64.split(",")[-1])
     img = Image.open(BytesIO(raw)).convert("RGB")
@@ -186,7 +188,7 @@ def identify():
         if r["recognized"]:
             ok, msg = mark_attendance(
                 r["student_id"], r["name"], r["confidence"],
-                subject, lecture, app
+                subject, lecture, start_time, end_time, app
             )
             r["marked"] = ok
             r["msg"] = msg
