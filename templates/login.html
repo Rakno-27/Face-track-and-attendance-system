@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FaceTrack | Secure Authentication</title>
+    <script>
+        if (localStorage.getItem('ft-theme') === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+    </script>
     <style>
         :root {
             --bg: #0f1115;
@@ -14,6 +19,14 @@
             --primary: #10b981;
             --primary-hover: #059669;
             --red: #ef4444;
+        }
+
+        [data-theme="light"] {
+            --bg: #f5f7f9;
+            --surface: #ffffff;
+            --text1: #111418;
+            --text2: #6b7280;
+            --border: rgba(0, 0, 0, 0.12);
         }
 
         * {

@@ -20,18 +20,15 @@ from sqlalchemy import event, select
 @event.listens_for(Student, "before_insert")
 def generate_student_code(mapper, connection, target):
     if not target.student_code:
-        year = str(datetime.datetime.now().year)
-        prefix = f"STU-{year}-"
-        
+        prefix = "STU"
         stmt = select(Student.student_code).where(
             Student.student_code.like(f"{prefix}%")
         ).order_by(Student.student_code.desc()).limit(1)
         
         result = connection.execute(stmt).scalar()
-        
         if result:
             try:
-                last_num = int(result.split('-')[-1])
+                last_num = int(result[3:])
                 new_num = last_num + 1
             except ValueError:
                 new_num = 1
@@ -44,18 +41,15 @@ def bulk_generate_student_codes(count=1):
     """
     Statically binds safe sequence ranges dynamically cleanly bypassing uncommitted flushes securely natively.
     """
-    year = str(datetime.datetime.now().year)
-    prefix = f"STU-{year}-"
-    
+    prefix = "STU"
     stmt = select(Student.student_code).where(
         Student.student_code.like(f"{prefix}%")
     ).order_by(Student.student_code.desc()).limit(1)
     
     result = db.session.execute(stmt).scalar()
-    
     if result:
         try:
-            last_num = int(result.split('-')[-1])
+            last_num = int(result[3:])
         except ValueError:
             last_num = 0
     else:

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FaceTrack Analytics</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    if (localStorage.getItem('ft-theme') === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  </script>
+  <style>
+    :root {
+      --bg: #0d0f12; --surface: #13161c; --elevated: #1c2030; --border: rgba(255, 255, 255, 0.07);
+      --border2: rgba(255, 255, 255, 0.12);
+      --accent: #00e676; --mono: 'Space Mono', monospace; --sans: 'Inter', sans-serif;
+      --text: #eef0f4; --text2: rgba(238, 240, 244, 0.55); --text3: rgba(238, 240, 244, 0.28);
+    }
+    
+    [data-theme="light"] {
+      --bg: #f5f7f9; --surface: #ffffff; --elevated: #f0f3f6; --border: rgba(0, 0, 0, 0.08); --border2: rgba(0, 0, 0, 0.12);
+      --text: #111418; --text2: rgba(17, 20, 24, 0.65); --text3: rgba(17, 20, 24, 0.4);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0 }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; }
+    
+    .logo { padding: 1.4rem 2rem; display: flex; align-items: center; gap: .6rem; font-family: var(--mono); font-weight: 700; border-bottom: 1px solid var(--border); }
+    .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    
+    .nav { padding: 1rem 2rem; display: flex; gap: 1rem; border-bottom: 1px solid var(--border); background: var(--surface); }
+    .nav a { color: var(--text2); text-decoration: none; font-size: .85rem; padding: .4rem .8rem; border-radius: 6px; transition: .15s; }
+    .nav a:hover, .nav a.active { background: var(--elevated); color: var(--text); }
+    
+    main { padding: 2rem; max-width: 1400px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; letter-spacing: -.02em; margin-bottom: 1.5rem; }
+    
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
+    .stat-val { font-size: 2rem; font-family: var(--mono); font-weight: 700; color: var(--accent); }
+    .stat-lbl { font-size: .8rem; color: var(--text2); margin-top: .4rem; text-transform: uppercase; letter-spacing: .05em; }
+    
+    .charts { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+    @media(max-width:900px) { .charts { grid-template-columns: 1fr; } }
+    .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
+    .chart-card h3 { font-size: .85rem; color: var(--text2); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: .05em; }
+    .chart-wrap { position: relative; height: 300px; width: 100%; }
+    
+  </style>
+</head>
+<body>
+  <div class="logo"><div class="logo-dot"></div>FaceTrack</div>
+  <div class="nav">
+    <a href="/admin">← Back to Dashboard</a>
+    <a href="/admin/analytics" class="active">Analytics Overview</a>
+  </div>
+
+  <main>
+    <h1>System Analytics</h1>
+    
+    <div class="stats">
+      <div class="stat"><div class="stat-val" id="m-students">-</div><div class="stat-lbl">Total Students</div></div>
+      <div class="stat"><div class="stat-val" id="m-sessions">-</div><div class="stat-lbl">Total Sessions</div></div>
+      <div class="stat"><div class="stat-val" id="m-att">-</div><div class="stat-lbl">Total Logs</div></div>
+      <div class="stat"><div class="stat-val" id="m-avg">-</div><div class="stat-lbl">Avg Attendance</div></div>
+    </div>
+
+    <div class="charts">
+      <div class="chart-card">
+        <h3>Daily Attendance Trends</h3>
+        <div class="chart-wrap"><canvas id="dailyChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Subject Distribution</h3>
+        <div class="chart-wrap"><canvas id="subjChart"></canvas></div>
+      </div>
+    </div>
+    
+    <div class="chart-card" style="margin-bottom: 2rem">
+      <h3>Top Students (By Attendance Count)</h3>
+      <div class="chart-wrap" style="height: 350px"><canvas id="stuChart"></canvas></div>
+    </div>
+
+  </main>
+
+  <script>
+    Chart.defaults.color = getComputedStyle(document.documentElement).getPropertyValue('--text2').trim() || 'rgba(238, 240, 244, 0.55)';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.scale.grid.color = getComputedStyle(document.documentElement).getPropertyValue('--border').trim() || 'rgba(255, 255, 255, 0.05)';
+
+    async function loadData() {
+      try {
+        const res = await fetch('/api/admin/analytics_data');
+        const d = await res.json();
+
+        if(d.error) return;
+
+        // Metrics
+        document.getElementById('m-students').textContent = d.metrics.total_students;
+        document.getElementById('m-sessions').textContent = d.metrics.total_sessions;
+        document.getElementById('m-att').textContent = d.metrics.total_attendance;
+        document.getElementById('m-avg').textContent = d.metrics.avg_attendance + '%';
+
+        // Daily Chart
+        new Chart(document.getElementById('dailyChart'), {
+          type: 'line',
+          data: {
+            labels: d.daily_chart.labels,
+            datasets: [{
+              label: 'Attendance Count',
+              data: d.daily_chart.data,
+              borderColor: '#00e676',
+              backgroundColor: 'rgba(0, 230, 118, 0.1)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.3,
+              pointBackgroundColor: '#00e676'
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+
+        // Subject Chart
+        new Chart(document.getElementById('subjChart'), {
+          type: 'doughnut',
+          data: {
+            labels: d.subject_chart.labels,
+            datasets: [{
+              data: d.subject_chart.data,
+              backgroundColor: ['#00e676', '#5352ed', '#ffa502', '#ff4757', '#2ed573', '#1e90ff'],
+              borderWidth: 0
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, cutout: '75%' }
+        });
+
+        // Student Chart
+        new Chart(document.getElementById('stuChart'), {
+          type: 'bar',
+          data: {
+            labels: d.student_chart.labels,
+            datasets: [{
+              label: 'Classes Attended',
+              data: d.student_chart.data,
+              backgroundColor: 'rgba(83, 82, 237, 0.8)',
+              borderRadius: 4
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, indexAxis: 'x', plugins: { legend: { display: false } } }
+        });
+
+      } catch(e) { console.error("Analytics extraction failed:", e); }
+    }
+    
+    loadData();
+  </script>
+</body>
+</html>
