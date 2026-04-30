@@ -1369,8 +1369,10 @@
                 <video id="cam-preview" autoplay playsinline muted></video>
                 <div class="ph-actions" style="margin-bottom:.5rem">
                   <button class="btn btn-ghost btn-sm btn-full" onclick="openCam()">📷 Open Camera</button>
-                  <button class="btn btn-primary btn-sm btn-full" onclick="capture()">Capture & Identify</button>
+                  <button id="btn-start-verify" class="btn btn-sm btn-full" onclick="startLivenessVerification()" style="display:none; background:var(--yellow); color:#000;">👁️ Start Verification</button>
+                  <button id="btn-capture" class="btn btn-primary btn-sm btn-full" onclick="capture()">Capture & Identify</button>
                 </div>
+                <div id="liveness-status" style="text-align:center; font-weight:bold; color:var(--yellow); display:none; margin-bottom:.5rem;"></div>
                 <div id="cap-result" class="cap-result"></div>
               </div>
             </div>
@@ -1828,9 +1830,9 @@
       <td><span class="badge ${createdBc}">${s.status}</span></td>
       <td>
         <div style="display:flex;gap:.35rem">
-          <button class="btn btn-ghost btn-sm" onclick="openEnroll('${s.student_id}','${s.name}')">📸 Enroll</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEnroll('${s.student_id}','${s.name.replace(/'/g, "\\'")}')">📸 Enroll</button>
           <button class="btn btn-ghost btn-sm" onclick="viewStats('${s.student_id}')">Stats</button>
-          <button class="btn btn-danger btn-sm" onclick="delStu('${s.student_id}','${s.name}')">Del</button>
+          <button class="btn btn-danger btn-sm" onclick="delStu('${s.student_id}','${s.name.replace(/'/g, "\\'")}')">Del</button>
         </div>
       </td>
     </tr>`;
@@ -1887,7 +1889,12 @@
 
     async function delStu(sid, name) {
       if (!confirm(`Delete "${name}"?`)) return;
-      await api(`/api/students/${sid}`, { method: 'DELETE' });
+      const r = await api(`/api/students/${sid}`, { method: 'DELETE' });
+      if (!r.ok) {
+        const d = await r.json();
+        toast(d.error || 'Failed to delete student', 'err');
+        return;
+      }
       toast('Deleted', 'ok'); loadStudents();
     }
 
@@ -1899,7 +1906,7 @@
       const col = pct >= 75 ? 'var(--accent)' : pct >= 50 ? 'var(--yellow)' : 'var(--red)';
       document.getElementById('stats-body').innerHTML = `
     <div class="srow"><span class="srow-lbl">Student</span><span class="srow-val">${d.name}</span></div>
-    <div class="srow"><span class="srow-lbl">Days Present</span><span class="srow-val">${d.total_present}</span></div>
+    <div class="srow"><span class="srow-lbl">Days Present</span><span class="srow-val">${d.present_count}</span></div>
     <div class="srow"><span class="srow-lbl">Since Registration</span><span class="srow-val">${d.days_since_registration} days</span></div>
     <div class="srow"><span class="srow-lbl">Last Seen</span><span class="srow-val">${d.last_seen}</span></div>
     <div>
@@ -1964,6 +1971,7 @@
           if (captured >= 5) {
             showAlert(ok, `All 5 unique samples captured. Finished!`);
             loadStudents();
+            setTimeout(() => { hide('enroll-modal'); stopEnroll(); }, 1500);
             break;
           }
         }
@@ -2128,12 +2136,90 @@
         camStream = await navigator.mediaDevices.getUserMedia({ video: true });
         const v = document.getElementById('cam-preview');
         v.srcObject = camStream; v.style.display = 'block';
+        
+        document.getElementById('btn-start-verify').style.display = 'block';
+        document.getElementById('btn-capture').disabled = true;
+        document.getElementById('liveness-status').style.display = 'none';
+        livenessPassed = false;
       } catch (e) { toast('Camera access denied! Action: Stop the Background Live Feed first.', 'err'); }
+    }
+
+    let livenessInterval = null;
+    let livenessPassed = false;
+
+    async function startLivenessVerification() {
+      const vid = document.getElementById('cam-preview');
+      if (!camStream || !vid.srcObject) return;
+      const statusDiv = document.getElementById('liveness-status');
+      statusDiv.style.display = 'block';
+      statusDiv.innerText = "Initializing...";
+      statusDiv.style.color = 'var(--yellow)';
+      
+      try {
+        const opts = { method: 'POST', headers: { 'Content-Type': 'application/json' } };
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        if (csrfMeta) opts.headers['X-CSRFToken'] = csrfMeta.content;
+        
+        let res = await fetch(API + '/api/liveness/start', opts);
+        let data = await res.json();
+        if (data.success) {
+          statusDiv.innerText = data.message;
+          document.getElementById('btn-start-verify').style.display = 'none';
+          livenessPassed = false;
+          document.getElementById('btn-capture').disabled = true;
+          
+          if (livenessInterval) clearInterval(livenessInterval);
+          livenessInterval = setInterval(checkLiveness, 300);
+        } else {
+          statusDiv.innerText = "Error starting liveness.";
+          statusDiv.style.color = 'var(--red)';
+        }
+      } catch (e) {
+        statusDiv.innerText = "Server error.";
+      }
+    }
+
+    async function checkLiveness() {
+      if (livenessPassed) return;
+      const vid = document.getElementById('cam-preview');
+      
+      canvas.width = vid.videoWidth || 640;
+      canvas.height = vid.videoHeight || 480;
+      canvas.getContext('2d').drawImage(vid, 0, 0);
+      const b64 = canvas.toDataURL('image/jpeg', 0.7);
+      
+      try {
+        const opts = { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image_base64: b64 }) 
+        };
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        if (csrfMeta) opts.headers['X-CSRFToken'] = csrfMeta.content;
+        
+        let res = await fetch(API + '/api/liveness/check', opts);
+        let data = await res.json();
+        const statusDiv = document.getElementById('liveness-status');
+        
+        if (data.passed) {
+          clearInterval(livenessInterval);
+          livenessPassed = true;
+          statusDiv.innerText = "Liveness Passed! You can now Capture.";
+          statusDiv.style.color = 'var(--accent)';
+          document.getElementById('btn-capture').disabled = false;
+        } else {
+          statusDiv.innerText = `Blink 3 times... (${data.blinks || 0}/3)`;
+        }
+      } catch (e) {
+        console.error("Liveness check error", e);
+      }
     }
 
     async function capture() {
       const vid = document.getElementById('cam-preview');
       if (!camStream || !vid.srcObject) { await openCam(); return; }
+      if (!livenessPassed) { toast("Please complete liveness verification first.", "err"); return; }
+      
       canvas.width = vid.videoWidth || 640; canvas.height = vid.videoHeight || 480;
       canvas.getContext('2d').drawImage(vid, 0, 0);
       const b64 = canvas.toDataURL('image/jpeg', .9);

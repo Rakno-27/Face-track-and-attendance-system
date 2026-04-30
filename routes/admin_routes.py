@@ -10,7 +10,7 @@ admin_bp = Blueprint('admin_bp', __name__)
 def admin_reset():
     Attendance.query.delete()
     db.session.commit()
-    from services.attendance_service import clear_attendance_cache
+    from utils.attendance_service import clear_attendance_cache
     clear_attendance_cache()
     return jsonify({"success": True, "message": "Attendance SQLite explicitly flushed."})
 
@@ -30,7 +30,7 @@ def admin_reset_session():
     if sess_ids:
         deleted_count = Attendance.query.filter(Attendance.session_id.in_(sess_ids)).delete(synchronize_session=False)
         db.session.commit()
-        from services.attendance_service import clear_attendance_cache
+        from utils.attendance_service import clear_attendance_cache
         clear_attendance_cache()
     else:
         deleted_count = 0
@@ -45,7 +45,7 @@ def admin_clear_encodings():
     db.session.commit()
     
     from flask import current_app
-    from services.face_service import reload_cache
+    from recognition.face_service import reload_cache
     reload_cache(current_app)
     
     logging.info("Admin definitively cleared SQL ORM vectors globally.")

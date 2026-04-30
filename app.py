@@ -11,9 +11,21 @@ from PIL import Image
 from datetime import timedelta
 from flask import Flask, render_template, request, jsonify, Response, session, redirect
 
+try:
+    from liveness.blink import BlinkDetector
+except ImportError:
+    BlinkDetector = None
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
+
+# Global Liveness Detector
+if BlinkDetector:
+    liveness_detector = BlinkDetector()
+else:
+    liveness_detector = None
+
 
 # ─── Database Configuration ──────────────────────────────────────
 from database import db
@@ -75,14 +87,14 @@ def restrict_access():
 with app.app_context():
     db.create_all()
 
-from services.face_service import reload_cache, identify_frame
+from recognition.face_service import reload_cache, identify_frame
 with app.app_context():
     reload_cache(app)
 
-from services.video_service import CameraManager
+from utils.video_service import CameraManager
 camera_manager = CameraManager(app=app)
 
-from services.attendance_service import get_current_session, get_daily_schedule, mark_attendance
+from utils.attendance_service import get_current_session, get_daily_schedule, mark_attendance
 
 # ─── Render Routes ───────────────────────────────────────────────
 @app.route("/")
@@ -154,6 +166,32 @@ def get_timetable_daily():
         "schedule": schedule
     })
 
+@app.route("/api/liveness/start", methods=["POST"])
+def liveness_start():
+    if not liveness_detector:
+        return jsonify({"success": False, "message": "Liveness module not available"}), 500
+    liveness_detector.reset()
+    return jsonify({"success": True, "message": "Blink 3 times to verify"})
+
+@app.route("/api/liveness/check", methods=["POST"])
+def liveness_check():
+    if not liveness_detector:
+        return jsonify({"success": False, "message": "Liveness module not available"}), 500
+    
+    b64 = request.json.get("image_base64", "")
+    if not b64:
+        return jsonify({"error": "No image provided"}), 400
+        
+    try:
+        raw = base64.b64decode(b64.split(",")[-1])
+        img = Image.open(BytesIO(raw)).convert("RGB")
+        frame = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+        
+        status = liveness_detector.update(frame)
+        return jsonify(status)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
 @app.route("/api/identify", methods=["POST"])
 def identify():
     b64 = request.json.get("image_base64", "")
@@ -161,6 +199,14 @@ def identify():
     session_info = get_current_session(app=app)
     if session_info["status"] != "open":
         return jsonify({"faces": [], "marked": [], "error": session_info["msg"]}), 400
+
+    if liveness_detector and not liveness_detector.passed:
+        return jsonify({
+            "faces": [], 
+            "marked": [], 
+            "error": "Liveness not passed", 
+            "blinks": liveness_detector.blink_count
+        }), 403
 
     subject = session_info["session"]["subject"]
     lecture = session_info["session"]["lecture"]
@@ -172,8 +218,9 @@ def identify():
     frame = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
     h, w = frame.shape[:2]
-    if w > 640:
-        scale = 640 / w
+    # Only downscale very large images (>1280px); keep webcam-sized images as-is
+    if w > 1280:
+        scale = 1280 / w
         frame = cv2.resize(frame, (0, 0), fx=scale, fy=scale)
 
     try:

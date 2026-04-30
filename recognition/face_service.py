@@ -10,9 +10,9 @@ except ImportError:
 
 # Using the unified models safely mapped correctly explicitly
 from models import Student
-from encoding_utils import deserialize_encoding
+from utils.encoding_utils import deserialize_encoding
 
-TOLERANCE = 0.45
+TOLERANCE = 0.50
 
 known_encodings, known_ids, known_names = [], [], []
 
@@ -46,7 +46,10 @@ def encode_from_b64(b64_str):
             import cv2
             arr = cv2.resize(arr, (0, 0), fx=scale, fy=scale)
             
-        locs = face_recognition.face_locations(arr)
+        locs = face_recognition.face_locations(arr, number_of_times_to_upsample=1)
+        if not locs:
+            # Retry with higher upsample if first pass missed the face
+            locs = face_recognition.face_locations(arr, number_of_times_to_upsample=2)
         if not locs:
             logging.warning("No face locations found during encoding.")
             return None
@@ -62,8 +65,12 @@ def identify_frame(frame):
         return []
 
     rgb = np.ascontiguousarray(frame[:, :, ::-1])
-    locs = face_recognition.face_locations(rgb)
+    locs = face_recognition.face_locations(rgb, number_of_times_to_upsample=1)
     if not locs:
+        # Retry with higher upsample in case face is small or off-center
+        locs = face_recognition.face_locations(rgb, number_of_times_to_upsample=2)
+    if not locs:
+        logging.warning("identify_frame: No faces detected in frame (tried upsample=1 and 2).")
         return []
         
     logging.info(f"Detected {len(locs)} face(s) in frame.")

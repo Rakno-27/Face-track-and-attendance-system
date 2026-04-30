@@ -4,8 +4,8 @@ from flask import Blueprint, request, jsonify
 from sqlalchemy.exc import IntegrityError
 from database import db
 from models import Student, Attendance, bulk_generate_student_codes, Session
-from encoding_utils import serialize_encoding
-from services.face_service import encode_from_b64, reload_cache
+from utils.encoding_utils import serialize_encoding
+from recognition.face_service import encode_from_b64, reload_cache
 import datetime
 import os
 import base64
@@ -54,13 +54,19 @@ def add_student():
 @student_bp.route("/api/students/<sid>", methods=["DELETE"])
 def delete_student(sid):
     s = Student.query.filter_by(student_code=sid).first() or Student.query.filter_by(roll_number=sid).first() or (Student.query.get(int(sid)) if str(sid).isdigit() else None)
-    if s:
+    if not s:
+        return jsonify({"error": "Student not found"}), 404
+        
+    try:
         Attendance.query.filter_by(student_id=s.id).delete()
         db.session.delete(s)
         db.session.commit()
         from flask import current_app
         reload_cache(current_app)
-    return jsonify({"success": True})
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 @student_bp.route("/upload_students", methods=["POST"])
 def upload_students():
